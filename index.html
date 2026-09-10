@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Git Dungeon Quest</title>
+    <style>
+        body {
+            background: #111;
+            color: #fff;
+            text-align: center;
+            font-family: monospace;
+            margin: 0;
+            padding: 20px;
+        }
+
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        #gameCanvas {
+            background: #222;
+            border: 4px solid #fff;
+            box-sizing: border-box;
+        }
+
+        #terminal {
+            width: 600px;
+            height: 140px;
+            background-color: #0d1117;
+            color: #3fb950;
+            font-family: monospace;
+            padding: 10px;
+            border: 2px solid #30363d;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+        #terminal-history {
+            overflow-y: auto;
+            text-align: left;
+            flex-grow: 1;
+        }
+
+        .terminal-line {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .prompt {
+            color: #58a6ff;
+            white-space: nowrap;
+        }
+
+        #terminal-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-family: inherit;
+            font-size: 14px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>⚔️ GIT DUNGEON: LEVEL 1 ⚔️</h1>
+    <p>Check the instructions below or follow your GitHub Issue tasks!</p>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="600" height="300"></canvas>
+        
+        <div id="terminal">
+            <div id="terminal-history">Welcome to Git Dungeon Terminal. Type 'help' to start.</div>
+            <div class="terminal-line">
+                <span class="prompt">guest@git-dungeon:~$</span>
+                <input type="text" id="terminal-input" autocomplete="off" autofocus />
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Scripts -->
+    <script src="src/badge.js"></script>
+    <script src="src/game.js"></script>
+    <script src="src/terminal.js"></script>
+</body>
+</html>
