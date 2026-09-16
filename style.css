@@ -1,0 +1,52 @@
+#game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#gameCanvas {
+    background: #222;
+    border: 4px solid #fff;
+}
+
+#terminal {
+    width: 600px;
+    height: 140px;
+    background-color: #0d1117;
+    color: #3fb950;
+    font-family: monospace;
+    padding: 10px;
+    border: 2px solid #30363d;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+#terminal-history {
+    overflow-y: auto;
+    text-align: left;
+    flex-grow: 1;
+}
+
+.terminal-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.prompt {
+    color: #58a6ff;
+    white-space: nowrap;
+}
+
+#terminal-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    width: 100%;
+}
