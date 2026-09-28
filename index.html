@@ -2,92 +2,134 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Git Dungeon Quest</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Dungeon</title>
     <style>
         body {
-            background: #111;
-            color: #fff;
-            text-align: center;
+            background-color: #0d1117;
+            color: #c9d1d9;
             font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
             margin: 0;
             padding: 20px;
+            box-sizing: border-box;
         }
 
         #game-container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            max-width: 600px;
-            margin: 0 auto;
+            gap: 12px;
         }
 
-        #gameCanvas {
-            background: #222;
-            border: 4px solid #fff;
-            box-sizing: border-box;
+        .controls-bar {
+            width: 560px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
-        #terminal {
-            width: 600px;
-            height: 140px;
-            background-color: #0d1117;
-            color: #3fb950;
+        select {
+            background: #161b22;
+            color: #58a6ff;
+            border: 1px solid #30363d;
+            padding: 4px 8px;
+            border-radius: 4px;
             font-family: monospace;
-            padding: 10px;
+            font-size: 12px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        canvas {
             border: 2px solid #30363d;
-            box-sizing: border-box;
+            border-radius: 6px;
+            background-color: #010409;
+        }
+
+        #terminal-container {
+            width: 560px;
+            height: 180px;
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            margin-top: 10px;
+            padding: 10px;
+            box-sizing: border-box;
         }
 
         #terminal-history {
-            overflow-y: auto;
-            text-align: left;
             flex-grow: 1;
+            overflow-y: auto;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #8b949e;
         }
 
-        .terminal-line {
+        .terminal-input-row {
             display: flex;
             align-items: center;
-            gap: 6px;
+            margin-top: 6px;
         }
 
         .prompt {
-            color: #58a6ff;
-            white-space: nowrap;
+            color: #2ea44f;
+            margin-right: 8px;
+            font-size: 12px;
         }
 
         #terminal-input {
             background: transparent;
             border: none;
-            outline: none;
-            color: #fff;
-            font-family: inherit;
-            font-size: 14px;
+            color: #58a6ff;
+            font-family: monospace;
+            font-size: 12px;
             width: 100%;
+            outline: none;
         }
     </style>
 </head>
 <body>
-    <h1>⚔️ GIT DUNGEON: LEVEL 1 ⚔️</h1>
-    <p>Check the instructions below or follow your GitHub Issue tasks!</p>
 
     <div id="game-container">
-        <canvas id="gameCanvas" width="1200" height="600"></canvas>
-        
-        <div id="terminal">
-            <div id="terminal-history">Welcome to Git Dungeon Terminal. Type 'help' to start.</div>
-            <div class="terminal-line">
+        <div class="controls-bar">
+            <div>
+                <label for="level-select" style="font-size: 12px; color: #8b949e; margin-right: 6px;">SELECT LEVEL:</label>
+                <select id="level-select" onchange="switchLevel(this.value)">
+                    <option value="Sandbox">🧪 Sandbox (Freeplay)</option>
+                    <option value="Level1">⚔️ Level 1: Branching Maze</option>
+                    <option value="Level2">🔥 Level 2: Dual Gate Challenge</option>
+                </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 12px; cursor: pointer; color: #8b949e;">
+                    <input type="checkbox" id="toggle-coords" onchange="toggleAdminCoords(this)"> 📐 Coordinates
+                </label>
+                <span id="admin-status" style="font-size: 11px; font-family: monospace;"></span>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="560" height="280"></canvas>
+
+        <div id="terminal-container">
+            <div id="terminal-history"></div>
+            <div class="terminal-input-row">
                 <span class="prompt">guest@git-dungeon:~$</span>
-                <input type="text" id="terminal-input" autocomplete="off" autofocus />
+                <input type="text" id="terminal-input" autofocus autocomplete="off" />
             </div>
         </div>
     </div>
 
-    <!-- Game Scripts -->
-    <script src="src/badge.js"></script>
+    <!-- Scripts linked in order -->
+    <script src="src/sandbox_level.js"></script>
+    <script src="src/level_1.js"></script>
+    <script src="src/level_2.js"></script>
     <script src="src/game.js"></script>
     <script src="src/terminal.js"></script>
 </body>
