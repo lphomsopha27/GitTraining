@@ -3,27 +3,28 @@ const ctx = canvas.getContext("2d");
 
 window.adminUnlocked = false;
 window.showCoordinates = false;
-window.currentLevelKey = "Sandbox";
+window.currentLevelKey = "Level1";
 
-// Helper to retrieve active level object dynamically
+// Universal terminal logging function
+window.writeOutput = function(text) {
+    const history = document.getElementById("terminal-history");
+    if (!history) return;
+    const line = document.createElement("div");
+    line.style.marginBottom = "4px";
+    line.style.whiteSpace = "pre-wrap";
+    line.textContent = text;
+    history.appendChild(line);
+    history.scrollTop = history.scrollHeight;
+};
+
 function getActiveLevelObj(key) {
-    if (key === "Sandbox") return window.sandbox_level;
     if (key === "Level1") return window.Level1;
-    if (key === "Level2") return window.Level2;
-    return window.SandboxLevel;
+    if (key === "Sandbox") return window.SandboxLevel;
+    return window.Level1;
 }
 
-// Generate a fresh state object for level resets
 function getFreshLevelState(levelKey) {
-    if (levelKey === "Sandbox") {
-        return {
-            commits: [{ id: "C0", parents: [], x: 80, y: 200 }],
-            branches: { "main": "C0" },
-            head: "main",
-            branchYMap: { "main": 200 },
-            won: false
-        };
-    } else if (levelKey === "Level1") {
+    if (levelKey === "Level1") {
         return {
             commits: [{ id: "C0", parents: [], x: 80, y: 200 }],
             branches: { "main": "C0" },
@@ -32,14 +33,12 @@ function getFreshLevelState(levelKey) {
             gateUnlocked: false,
             won: false
         };
-    } else if (levelKey === "Level2") {
+    } else {
         return {
             commits: [{ id: "C0", parents: [], x: 80, y: 200 }],
             branches: { "main": "C0" },
             head: "main",
-            hasKeyA: false,
-            hasKeyB: false,
-            gateUnlocked: false,
+            branchYMap: { "main": 200 },
             won: false
         };
     }
@@ -53,14 +52,12 @@ function switchLevel(levelKey) {
     window.currentLevel = levelObj;
     window.currentLevel.gitState = getFreshLevelState(levelKey);
 
-    // Refresh Terminal History Header
     const history = document.getElementById("terminal-history");
-    if (history) {
-        history.innerHTML = "";
-        if (window.currentLevel.title) writeOutput(window.currentLevel.title);
-        if (window.currentLevel.instructions) writeOutput(window.currentLevel.instructions);
-        writeOutput("Type 'help' to see available git commands.");
-    }
+    if (history) history.innerHTML = "";
+
+    if (window.currentLevel.title) window.writeOutput(window.currentLevel.title);
+    if (window.currentLevel.instructions) window.writeOutput(window.currentLevel.instructions);
+    window.writeOutput("Type 'help' to see available git commands.\n");
 }
 
 function toggleAdminCoords(checkbox) {
@@ -90,16 +87,16 @@ function toggleAdminCoords(checkbox) {
     }
 }
 
-function executeGitCommand(subCmd, args, writeOutput) {
+function executeGitCommand(subCmd, args) {
     try {
         const level = window.currentLevel || getActiveLevelObj(window.currentLevelKey);
-        if (!level || !level.gitState) return writeOutput("Error: No active level state.");
+        if (!level || !level.gitState) return window.writeOutput("Error: No active level state.");
 
         const state = level.gitState;
         const activeCommitId = state.branches[state.head] || state.head;
         const currentCommit = state.commits.find(c => c.id === activeCommitId);
 
-        if (!currentCommit) return writeOutput("Error: Active commit node not found.");
+        if (!currentCommit) return window.writeOutput("Error: Active commit node not found.");
 
         if (subCmd === "commit") {
             let newX, newY;
@@ -114,43 +111,42 @@ function executeGitCommand(subCmd, args, writeOutput) {
             }
 
             if (typeof level.canCommit === "function") {
-                if (!level.canCommit(newX, newY, writeOutput)) return;
+                if (!level.canCommit(newX, newY, window.writeOutput)) return;
             }
 
             const newId = `C${state.commits.length}`;
             state.commits.push({ id: newId, parents: [activeCommitId], x: newX, y: newY });
             state.branches[state.head] = newId;
-            writeOutput(`[${state.head} ${newId}] Advanced commit.`);
+            window.writeOutput(`[${state.head} ${newId}] Pinned evidence note.`);
 
             if (typeof level.onCommit === "function") {
-                level.onCommit(newX, newY, writeOutput);
+                level.onCommit(newX, newY, window.writeOutput);
             }
 
         } else if (subCmd === "branch") {
             const branchName = args[1];
-            if (!branchName) return writeOutput("Error: Specify a branch name (e.g., git branch feature)");
+            if (!branchName) return window.writeOutput("Error: Specify a branch name (e.g., git branch lead/tech)");
 
             state.branches[branchName] = activeCommitId;
-            writeOutput(`Created branch '${branchName}' at ${activeCommitId}`);
+            window.writeOutput(`Created lead branch '${branchName}' at ${activeCommitId}`);
 
         } else if (subCmd === "checkout") {
             const target = args[1];
             if (state.branches[target]) {
                 state.head = target;
-                writeOutput(`Switched to branch '${target}'`);
+                window.writeOutput(`Switched focus to lead branch '${target}'`);
             } else {
-                writeOutput(`error: branch '${target}' not found`);
+                window.writeOutput(`error: lead branch '${target}' not found`);
             }
 
         } else if (subCmd === "merge") {
             const targetBranch = args[1];
-            if (!state.branches[targetBranch]) return writeOutput(`error: branch '${targetBranch}' not found`);
+            if (!state.branches[targetBranch]) return window.writeOutput(`error: branch '${targetBranch}' not found`);
 
             const targetCommitId = state.branches[targetBranch];
             const targetCommit = state.commits.find(c => c.id === targetCommitId);
             const newId = `C${state.commits.length}`;
 
-            // Merge drops straight down to active branch Y at the target commit's X position
             const mergeX = Math.max(targetCommit.x, currentCommit.x);
 
             state.commits.push({
@@ -163,40 +159,50 @@ function executeGitCommand(subCmd, args, writeOutput) {
             state.branches[state.head] = newId;
 
             if (typeof level.onMerge === "function") {
-                level.onMerge(targetBranch, writeOutput);
+                level.onMerge(targetBranch, window.writeOutput);
             } else {
-                writeOutput(`Merged '${targetBranch}' into '${state.head}'.`);
+                window.writeOutput(`Merged '${targetBranch}' into '${state.head}'.`);
             }
+        } else if (subCmd === "status") {
+            window.writeOutput(`On branch ${state.head}\nActive evidence node: ${activeCommitId}`);
+        } else {
+            window.writeOutput(`git: '${subCmd}' is not a valid command. Try 'commit', 'branch', 'checkout', or 'merge'.`);
         }
     } catch (err) {
         console.error("Git Execution Error:", err);
-        writeOutput(`Error: ${err.message}`);
+        window.writeOutput(`Error: ${err.message}`);
     }
 }
 
 function renderGame() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Always render corkboard background first
+    ctx.fillStyle = "#1a1614";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const level = window.currentLevel || getActiveLevelObj(window.currentLevelKey);
-    if (!level || !level.gitState || !level.gitState.commits) {
-        return; // Guard against uninitialized state
-    }
+    if (!level || !level.gitState || !level.gitState.commits) return;
 
     const state = level.gitState;
 
-    // 1. Draw Map/Background
     if (typeof level.draw === "function") {
         level.draw(ctx, state);
     }
 
-    // 2. Commit Lines
+    // Red Investigation Threads
     state.commits.forEach(commit => {
         if (!commit.parents) return;
         commit.parents.forEach(parentId => {
             const parent = state.commits.find(c => c.id === parentId);
             if (parent) {
-                ctx.strokeStyle = "#58a6ff";
-                ctx.lineWidth = 4;
+                ctx.strokeStyle = "rgba(235, 59, 90, 0.4)";
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.moveTo(parent.x, parent.y);
+                ctx.lineTo(commit.x, commit.y);
+                ctx.stroke();
+
+                ctx.strokeStyle = "#eb3b5a";
+                ctx.lineWidth = 2.5;
                 ctx.beginPath();
                 ctx.moveTo(parent.x, parent.y);
                 ctx.lineTo(commit.x, commit.y);
@@ -205,54 +211,63 @@ function renderGame() {
         });
     });
 
-    // 3. Commit Nodes
+    // Polaroid Evidence Nodes
     state.commits.forEach(commit => {
-        ctx.fillStyle = "#0d1117";
-        ctx.fillRect(commit.x - 14, commit.y - 14, 28, 28);
-        ctx.strokeStyle = "#58a6ff";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(commit.x - 14, commit.y - 14, 28, 28);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "10px monospace";
+        ctx.fillStyle = "#f5f6fa";
+        ctx.fillRect(commit.x - 16, commit.y - 16, 32, 32);
+        
+        ctx.fillStyle = "#2f3640";
+        ctx.fillRect(commit.x - 12, commit.y - 14, 24, 20);
+
+        ctx.fillStyle = "#e1b12c";
+        ctx.beginPath();
+        ctx.arc(commit.x, commit.y - 14, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#2f3640";
+        ctx.font = "bold 9px monospace";
         ctx.textAlign = "center";
-        ctx.fillText(commit.id, commit.x, commit.y + 4);
+        ctx.fillText(commit.id, commit.x, commit.y + 12);
 
         if (window.showCoordinates) {
-            ctx.fillStyle = "#79c0ff";
+            ctx.fillStyle = "#f5f6fa";
             ctx.font = "9px monospace";
-            ctx.fillText(`(${commit.x}, ${commit.y})`, commit.x, commit.y - 18);
+            ctx.fillText(`(${commit.x}, ${commit.y})`, commit.x, commit.y - 20);
         }
     });
 
-    // 4. Branch Labels & Avatar
+    // Folder Tags & Detective Badge
     if (state.branches) {
         Object.keys(state.branches).forEach((bName, i) => {
             const commit = state.commits.find(c => c.id === state.branches[bName]);
             if (!commit) return;
 
             const isHead = (bName === state.head);
-            ctx.fillStyle = isHead ? "#238636" : "#30363d";
-            ctx.fillRect(commit.x - 25, commit.y + 18 + (i * 16), 50, 14);
-            ctx.fillStyle = "#ffffff";
-            ctx.font = "10px monospace";
-            ctx.fillText(bName, commit.x, commit.y + 28 + (i * 16));
+            ctx.fillStyle = isHead ? "#e1b12c" : "#7f8fa6";
+            ctx.fillRect(commit.x - 32, commit.y + 20 + (i * 16), 64, 14);
+            
+            ctx.fillStyle = "#1e272e";
+            ctx.font = "bold 9px monospace";
+            ctx.fillText(bName, commit.x, commit.y + 30 + (i * 16));
 
             if (isHead) {
-                ctx.fillStyle = "#58a6ff";
+                ctx.fillStyle = "#e1b12c";
                 ctx.beginPath();
-                ctx.arc(commit.x, commit.y - 22, 9, 0, Math.PI * 2);
+                ctx.arc(commit.x, commit.y - 24, 8, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.fillStyle = "#1e272e";
+                ctx.font = "bold 8px monospace";
+                ctx.fillText("🕵️", commit.x, commit.y - 21);
             }
         });
     }
 
-    // 5. Victory Screen
     if (state.won) {
-        ctx.fillStyle = "rgba(13, 17, 23, 0.92)";
+        ctx.fillStyle = "rgba(30, 39, 46, 0.94)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#3fb950";
+        ctx.fillStyle = "#44bd32";
         ctx.font = "bold 22px monospace";
-        ctx.fillText("🎉 LEVEL CLEARED! 🎉", canvas.width / 2, 130);
+        ctx.fillText("📂 CASE SOLVED & CLOSED! 📂", canvas.width / 2, 130);
     }
 }
 
@@ -261,8 +276,7 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// Initial Bootup
 document.addEventListener("DOMContentLoaded", () => {
-    switchLevel("Sandbox");
+    switchLevel("Level1");
     gameLoop();
 });

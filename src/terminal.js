@@ -1,37 +1,39 @@
-const terminalInput = document.getElementById("terminal-input");
-const terminalHistory = document.getElementById("terminal-history");
+document.addEventListener("DOMContentLoaded", () => {
+    const input = document.getElementById("terminal-input");
+    if (!input) return;
 
-terminalInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-        const command = terminalInput.value.trim();
-        if (command) {
-            writeOutput(`guest@git-dungeon:~$ ${command}`);
-            parseCommand(command);
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            const rawCmd = input.value.trim();
+            input.value = "";
+            if (!rawCmd) return;
+
+            window.writeOutput(`detective@case-files:~$ ${rawCmd}`);
+
+            const parts = rawCmd.split(/\s+/);
+            const mainCmd = parts[0];
+            const subCmd = parts[1];
+
+            if (mainCmd === "clear") {
+                const history = document.getElementById("terminal-history");
+                if (history) history.innerHTML = "";
+                return;
+            }
+
+            if (mainCmd === "help") {
+                window.writeOutput("Available Git Detective Commands:\n - git status\n - git commit\n - git branch <lead_name>\n - git checkout <lead_name>\n - git merge <lead_name>\n - clear");
+                return;
+            }
+
+            if (mainCmd === "git") {
+                if (!subCmd) {
+                    window.writeOutput("Usage: git <command> (e.g. 'git commit', 'git status', 'git branch lead/tech')");
+                } else {
+                    executeGitCommand(subCmd, parts.slice(1));
+                }
+            } else {
+                window.writeOutput(`Command not recognized: ${mainCmd}. Type 'help' for instructions.`);
+            }
         }
-        terminalInput.value = "";
-    }
+    });
 });
-
-function writeOutput(text) {
-    const line = document.createElement("div");
-    line.textContent = text;
-    terminalHistory.appendChild(line);
-    terminalHistory.scrollTop = terminalHistory.scrollHeight;
-}
-
-function parseCommand(inputStr) {
-    const args = inputStr.split(/\s+/);
-    const mainCmd = args[0].toLowerCase();
-
-    if (mainCmd === "help") {
-        writeOutput("Commands: git branch <name>, git checkout <name>, git commit, git merge <name>, clear");
-    } else if (mainCmd === "clear") {
-        terminalHistory.innerHTML = "";
-    } else if (mainCmd === "git") {
-        if (window.currentLevel && typeof window.currentLevel.handleCommand === "function") {
-            window.currentLevel.handleCommand(args[1], args.slice(1), writeOutput);
-        }
-    } else {
-        writeOutput(`bash: ${mainCmd}: command not found`);
-    }
-}
