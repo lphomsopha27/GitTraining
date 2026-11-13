@@ -19,7 +19,7 @@ window.writeOutput = function(text) {
 
 function getActiveLevelObj(key) {
     if (key === "Level1") return window.Level1;
-    if (key === "Sandbox") return window.SandboxLevel;
+    if (key === "SandboxLevel") return window.SandboxLevel;
     return window.Level1;
 }
 
