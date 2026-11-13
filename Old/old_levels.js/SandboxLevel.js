@@ -1,4 +1,4 @@
-window.sandbox_level = {
+window.SandboxLevel = {
     title: "🧪 GIT DUNGEON: SANDBOX MODE 🧪",
     instructions: "Freeplay mode! Practice branching, committing, and merging with no gates or obstacles.",
 
