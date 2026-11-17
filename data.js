@@ -1,216 +1,265 @@
+const SAVE_KEY = "git_detective_save_v2";
+
 const COMMAND_HELPERS = {
     status: {
         title: "git status",
-        badgeName: "Crime Scene Surveyor",
-        icon: "🔍",
         tag: "INSPECT THE BOARD",
+        icon: "🔍",
+        badgeName: "Scene Inspector",
         level: 1,
-        metaphor: "Before touching any clues, a detective steps up to the corkboard to survey the whole case—checking which folder is currently open and which leads still need to be pinned.",
-        git: "Shows your current active branch and lists any modified, staged, or untracked files without altering your project."
+        metaphor: "Stepping back from your desk to look at the entire corkboard—seeing which clues are pinned, modified, or still unexamined.",
+        git: "Shows your current branch, uncommitted changes, and untracked files in the working directory."
     },
     branch: {
-        title: "git branch <lead>",
-        badgeName: "Lead Isolator",
-        icon: "📌",
+        title: "git branch <name>",
         tag: "ISOLATE A LEAD",
+        icon: "📌",
+        badgeName: "Lead Isolator",
         level: 1,
-        metaphor: "You pin a dedicated lead card onto the board so you can chase down a theory on its own track without risking your clean, official 'main' case file.",
-        git: "Creates a new, isolated branch pointer from your current commit so you can develop or test ideas separately from 'main'."
+        metaphor: "Pinning a fresh evidence card onto its own investigation lane so you can test theories without messing up the main case file.",
+        git: "Creates a new branch pointer so you can develop features or fixes in isolation."
     },
     checkout: {
         title: "git checkout <branch>",
-        badgeName: "Dossier Hopper",
-        icon: "📂",
-        tag: "SWITCH WORKSPACE",
+        tag: "SWITCH FOCUS",
+        icon: "🗂️",
+        badgeName: "Case Jumper",
         level: 1,
-        metaphor: "Checking out a lead opens that specific evidence folder on your desk so you can examine its logs. Checking out 'main' brings you back to the master board.",
-        git: "Switches your active working directory to the specified branch, updating the files you view and edit to match that branch."
+        metaphor: "Walking over to a specific evidence folder—or stepping back to the main corkboard—to work directly on that lead.",
+        git: "Switches your active HEAD pointer and updates your working files to match the target branch."
     },
     commit: {
         title: "git commit",
-        badgeName: "Forensic Archivist",
-        icon: "📝",
-        tag: "STAMP & LOG FINDINGS",
+        tag: "SEAL THE RECORD",
+        icon: "💾",
+        badgeName: "Archivist",
         level: 1,
-        metaphor: "Once you verify a clue, you stamp and sign your forensic report into the folder so your discovery is permanently saved to that lead's timeline.",
-        git: "Records a permanent snapshot (checkpoint) of your staged changes in the current branch's version history."
+        metaphor: "Stamping your verified forensic findings with a timestamped case note so they are permanently logged on that branch.",
+        git: "Saves a permanent snapshot of your changes to the current branch's history along with a descriptive commit message."
     },
     merge: {
-        title: "git merge <lead>",
-        badgeName: "Red String Weaver",
-        icon: "🧵",
-        tag: "CONNECT THE RED STRING",
+        title: "git merge <branch>",
+        tag: "CONNECT THE THREADS",
+        icon: "🧶",
+        badgeName: "Thread Weaver",
         level: 1,
-        metaphor: "You tie a red string from a solved lead straight to the primary suspect on 'main'—officially weaving your side investigation into the master case.",
-        git: "Integrates the committed changes from a completed branch back into your active branch ('main')."
+        metaphor: "Tying the red string from a verified evidence card straight to the central suspect photo on the main board.",
+        git: "Integrates the committed history from a feature branch back into your current branch (such as main)."
     },
     log: {
         title: "git log",
-        badgeName: "Timeline Tracker",
-        icon: "🕰️",
-        tag: "LEVEL 02 COMMAND",
+        tag: "AUDIT TIMELINE",
+        icon: "📜",
+        badgeName: "Timeline Auditor",
         level: 2,
-        metaphor: "A detective flips backward through dated case reports to trace exactly when and who added each clue to the archive.",
-        git: "Displays the chronological commit history for the current branch, including commit hashes, authors, and messages."
+        metaphor: "Flipping backward through every stamped entry in the detective ledger to spot who altered a record and when.",
+        git: "Displays the chronological commit history, commit hashes, authors, and messages for the current branch."
     },
     revert: {
-        title: "git revert <commit>",
-        badgeName: "Cold Case Undone",
+        title: "git revert <hash>",
+        tag: "UNDO SAFELY",
         icon: "⏪",
-        tag: "LEVEL 02 COMMAND",
+        badgeName: "Forgery Reverser",
         level: 2,
-        metaphor: "Instead of tearing pages out of an official ledger, a detective files a formal correction entry that cancels out a tampered clue.",
-        git: "Safely undoes the changes from a previous commit by creating a brand-new commit with the inverse changes."
+        metaphor: "Filing an official correction entry that cancels out a forged clue without erasing the case's audit trail.",
+        git: "Creates a new commit that safely undoes the changes introduced by an earlier commit without rewriting history."
     }
 };
 
 const seenCommands = new Set();
 
-window.GameState = {
-    currentView: "DESK",
-    activeBranch: "main",
-    currentStep: 1,
-    branches: {
-        "main": { pinned: true, merged: true }
-    },
-    evidenceFiles: {
-        "atTheScene": {
+function createInitialEvidenceFiles() {
+    return {
+        atTheScene: {
             title: "Lead #1: Crime Scene Visitor Log",
             subtitle: "VAULT ACCESS LOG",
-            tilt: -0.04,
-            pinPos: { x: 310, y: 174 },
-            taskCompleted: false,
-            taskPrompt: "Filter visitor logs to identify who was present inside the vault at 22:15.",
-            codeSnippet: "// Visitor Log Algorithm\nfor (let i = 0; i < logs.length; i++) {\n  if (logs[i].atScene) {\n    verifySuspect(logs[i]);\n  }\n}",
+            pinPos: { x: 265, y: 145 },
+            tilt: -0.05,
             logs: [
                 { time: "22:15", name: "Vault Tech", status: "AT SCENE", suspect: true },
                 { time: "22:42", name: "Bank Manager", status: "VERIFIED", suspect: false },
                 { time: "23:05", name: "Passerby Witness", status: "QUESTIONED", suspect: false }
-            ]
-        },
-        "videologs": {
-            title: "Lead #2: Security Video Logs (CAM-02)",
-            subtitle: "CAM-02 FOOTAGE",
-            tilt: 0.035,
-            pinPos: { x: 655, y: 174 },
+            ],
+            taskPrompt: "Filter the visitor logs by the unverified status flag shown on the suspect's record.",
+            codeLines: [
+                "// Flag unverified scene presence",
+                "for (const log of logs) {",
+                "  if (log.status === \"{{BLANK}}\") {",
+                "    flagSuspect(log);",
+                "  }",
+                "}"
+            ],
+            blankAnswer: "AT SCENE",
+            blankPlaceholder: "STATUS",
+            blankHint: "Look at the red-flagged STATUS value on the Vault Tech entry: AT SCENE.",
+            puzzleSolved: false,
             taskCompleted: false,
-            taskPrompt: "Scan vault corridor surveillance frames for unauthorized motion.",
-            codeSnippet: "// Camera Scanner Loop\nfor (let frame of camLogs) {\n  if (frame.motionDetected) {\n    console.log('Motion at ' + frame.time);\n  }\n}",
-            logs: [
-                { time: "22:14:00", name: "CAM-02 Active", status: "NORMAL", suspect: false },
-                { time: "22:15:03", name: "Vault Breach Detected", status: "ALERT", suspect: true }
-            ]
+            commitMessage: ""
         },
-        "witness1": {
-            title: "Lead #3: Witness 1 Interrogation (Passerby)",
-            subtitle: "GETAWAY CAR TIP",
-            tilt: 0.03,
-            pinPos: { x: 310, y: 378 },
-            taskCompleted: false,
-            taskPrompt: "Record testimony variables from the outside street witness.",
-            codeSnippet: "// Witness Statement Logic\nlet knowsSuspect = false;\nlet atScene = true;\nlet isInnocent = true;",
+        videologs: {
+            title: "Lead #2: CCTV Security Feed",
+            subtitle: "CAMERA TELEMETRY",
+            pinPos: { x: 700, y: 148 },
+            tilt: 0.04,
             logs: [
-                { quote: "\"I saw a black sedan driving off fast at 10:20 PM.\"" }
-            ]
+                { time: "22:12", name: "Cam_04_Hallway", status: "NORMAL", suspect: false },
+                { time: "22:15", name: "Cam_01_Vault", status: "SIGNAL CUT", suspect: true },
+                { time: "22:20", name: "Cam_02_Lobby", status: "NORMAL", suspect: false }
+            ],
+            taskPrompt: "Scan the camera telemetry feeds for the fault status indicating tampering.",
+            codeLines: [
+                "// CCTV Feed Tamper Watchdog",
+                "for (const cam of feeds) {",
+                "  if (cam.status === \"{{BLANK}}\") {",
+                "    alertForensics(cam.id);",
+                "  }",
+                "}"
+            ],
+            blankAnswer: "SIGNAL CUT",
+            blankPlaceholder: "STATUS",
+            blankHint: "Check the fault status reported by Cam_01_Vault: SIGNAL CUT.",
+            puzzleSolved: false,
+            taskCompleted: false,
+            commitMessage: ""
         },
-        "witness2": {
-            title: "Lead #4: Witness 2 Interrogation (Bank Worker)",
-            subtitle: "OVERRIDE KEYCARD",
-            tilt: -0.035,
-            pinPos: { x: 655, y: 378 },
-            taskCompleted: false,
-            taskPrompt: "Record testimony variables from the bank staff witness.",
-            codeSnippet: "// Witness Statement Logic\nlet knowsSuspect = true;\nlet atScene = true;\nlet isInnocent = false;",
+        witness1: {
+            title: "Lead #3: Alleyway Witness Statement",
+            subtitle: "GETAWAY VEHICLE",
+            pinPos: { x: 272, y: 392 },
+            tilt: 0.05,
             logs: [
-                { quote: "\"The vault technician asked for the override code yesterday.\"" }
-            ]
+                { quote: "\"At 22:19, a matte-black sedan sped out of the rear vault alley. I caught the first three characters on the plate: X99!\"" }
+            ],
+            taskPrompt: "Query the traffic camera ALPR records using the partial license plate prefix from the witness.",
+            codeLines: [
+                "// Traffic Cam ALPR Prefix Query",
+                "const matches = trafficLogs.filter(car =>",
+                "  car.plate.startsWith(\"{{BLANK}}\")",
+                ");"
+            ],
+            blankAnswer: "X99",
+            blankPlaceholder: "PREFIX",
+            blankHint: "Witness #1 caught the first three characters of the getaway plate: X99.",
+            puzzleSolved: false,
+            taskCompleted: false,
+            commitMessage: ""
+        },
+        witness2: {
+            title: "Lead #4: Night Supervisor Testimony",
+            subtitle: "OVERRIDE CLEARANCE",
+            pinPos: { x: 696, y: 395 },
+            tilt: -0.04,
+            logs: [
+                { quote: "\"After 22:00, only a senior Vault Tech has OVERRIDE clearance to bypass the electronic vault lock.\"" }
+            ],
+            taskPrompt: "Audit the vault access logs for the elevated clearance level used to bypass the lock.",
+            codeLines: [
+                "// Vault Access Privilege Audit",
+                "const breach = vaultLogs.find(entry =>",
+                "  entry.clearance === \"{{BLANK}}\"",
+                ");"
+            ],
+            blankAnswer: "OVERRIDE",
+            blankPlaceholder: "CLEARANCE",
+            blankHint: "Check the clearance level named in the Night Supervisor's testimony: OVERRIDE.",
+            puzzleSolved: false,
+            taskCompleted: false,
+            commitMessage: ""
         }
-    }
+    };
+}
+
+window.GameState = {
+    currentView: "DESK",
+    currentStep: 1,
+    activeBranch: "main",
+    branches: {
+        main: { pinned: true, merged: true }
+    },
+    evidenceFiles: createInitialEvidenceFiles()
 };
 
-const SAVE_KEY = "git_detective_progress_v1";
-
-function setCookie(name, value, days = 365) {
+function setCookie(name, value, days) {
     try {
-        const expires = new Date(Date.now() + days * 864e5).toUTCString();
-        document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+        const d = new Date();
+        d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+        document.cookie = `${name}=${encodeURIComponent(value)};expires=${d.toUTCString()};path=/`;
     } catch (e) {}
 }
 
 function getCookie(name) {
     try {
-        const match = document.cookie.split("; ").find(row => row.startsWith(name + "="));
-        return match ? decodeURIComponent(match.split("=")[1]) : null;
-    } catch (e) {
-        return null;
-    }
-}
-
-function saveProgress() {
-    const state = window.GameState;
-    const completedTasks = {};
-    Object.keys(state.evidenceFiles).forEach(k => {
-        completedTasks[k] = !!state.evidenceFiles[k].taskCompleted;
-    });
-
-    const payload = {
-        unlockedCommands: Array.from(seenCommands),
-        level1: {
-            currentStep: state.currentStep,
-            currentView: state.currentView,
-            activeBranch: state.activeBranch,
-            branches: state.branches,
-            completedTasks: completedTasks
-        }
-    };
-
-    const jsonStr = JSON.stringify(payload);
-    try { localStorage.setItem(SAVE_KEY, jsonStr); } catch (e) {}
-    setCookie(SAVE_KEY, jsonStr, 365);
-
-    if (typeof updateAchievementCounters === "function") {
-        updateAchievementCounters();
-    }
-}
-
-function loadProgress() {
-    let raw = null;
-    try { raw = localStorage.getItem(SAVE_KEY); } catch (e) {}
-    if (!raw) raw = getCookie(SAVE_KEY);
-    if (!raw) return;
-
-    try {
-        const data = JSON.parse(raw);
-        if (Array.isArray(data.unlockedCommands)) {
-            data.unlockedCommands.forEach(cmd => seenCommands.add(cmd));
-        }
-        if (data.level1) {
-            const l1 = data.level1;
-            if (typeof l1.currentStep === "number") window.GameState.currentStep = l1.currentStep;
-            if (l1.currentView) window.GameState.currentView = l1.currentView;
-            if (l1.activeBranch) window.GameState.activeBranch = l1.activeBranch;
-            if (l1.branches) {
-                window.GameState.branches = Object.assign({ "main": { pinned: true, merged: true } }, l1.branches);
-            }
-            if (l1.completedTasks) {
-                Object.keys(l1.completedTasks).forEach(k => {
-                    if (window.GameState.evidenceFiles[k]) {
-                        window.GameState.evidenceFiles[k].taskCompleted = !!l1.completedTasks[k];
-                    }
-                });
-            }
+        const prefix = `${name}=`;
+        const parts = document.cookie.split(";");
+        for (let c of parts) {
+            c = c.trim();
+            if (c.indexOf(prefix) === 0) return decodeURIComponent(c.substring(prefix.length));
         }
     } catch (e) {}
+    return null;
 }
 
 function resetLevel1State() {
     window.GameState.currentView = "DESK";
-    window.GameState.activeBranch = "main";
     window.GameState.currentStep = 1;
-    window.GameState.branches = { "main": { pinned: true, merged: true } };
-    Object.keys(window.GameState.evidenceFiles).forEach(k => {
-        window.GameState.evidenceFiles[k].taskCompleted = false;
-    });
-    const history = document.getElementById("terminal-history");
-    if (history) history.innerHTML = "";
+    window.GameState.activeBranch = "main";
+    window.GameState.branches = {
+        main: { pinned: true, merged: true }
+    };
+    window.GameState.evidenceFiles = createInitialEvidenceFiles();
+}
+
+function saveProgress() {
+    try {
+        const evState = {};
+        Object.keys(window.GameState.evidenceFiles).forEach(k => {
+            const ev = window.GameState.evidenceFiles[k];
+            evState[k] = {
+                puzzleSolved: !!ev.puzzleSolved,
+                taskCompleted: !!ev.taskCompleted,
+                commitMessage: ev.commitMessage || ""
+            };
+        });
+
+        const payload = JSON.stringify({
+            seenCommands: Array.from(seenCommands),
+            currentView: window.GameState.currentView,
+            currentStep: window.GameState.currentStep,
+            activeBranch: window.GameState.activeBranch,
+            branches: window.GameState.branches,
+            evState
+        });
+
+        try { localStorage.setItem(SAVE_KEY, payload); } catch (e) {}
+        setCookie(SAVE_KEY, payload, 30);
+    } catch (e) {}
+}
+
+function loadProgress() {
+    try {
+        let raw = null;
+        try { raw = localStorage.getItem(SAVE_KEY); } catch (e) {}
+        if (!raw) raw = getCookie(SAVE_KEY);
+        if (!raw) return;
+
+        const data = JSON.parse(raw);
+        if (Array.isArray(data.seenCommands)) {
+            seenCommands.clear();
+            data.seenCommands.forEach(c => seenCommands.add(c));
+        }
+        if (data.currentView) window.GameState.currentView = data.currentView;
+        if (data.currentStep) window.GameState.currentStep = data.currentStep;
+        if (data.activeBranch) window.GameState.activeBranch = data.activeBranch;
+        if (data.branches) window.GameState.branches = data.branches;
+
+        if (data.evState) {
+            Object.keys(data.evState).forEach(k => {
+                if (window.GameState.evidenceFiles[k]) {
+                    window.GameState.evidenceFiles[k].puzzleSolved = !!data.evState[k].puzzleSolved;
+                    window.GameState.evidenceFiles[k].taskCompleted = !!data.evState[k].taskCompleted;
+                    window.GameState.evidenceFiles[k].commitMessage = data.evState[k].commitMessage || "";
+                }
+            });
+        }
+    } catch (e) {}
 }

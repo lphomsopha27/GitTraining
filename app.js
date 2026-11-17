@@ -1,6 +1,8 @@
 let audioCtx = null;
 let soundEnabled = false;
 let isHelperOpen = false;
+let isCommitModalOpen = false;
+let isHintOpen = false;
 let isGameActive = false;
 
 function toggleAudio() {
@@ -31,6 +33,11 @@ function playBeep(freq = 440, type = "sine", duration = 0.08) {
     } catch (e) {}
 }
 
+function isAnyModalOpen() {
+    return isHelperOpen || isCommitModalOpen || isHintOpen;
+}
+
+// ==================== HOME & SUB-VIEWS ====================
 function openSubView(viewName) {
     const titleView = document.getElementById("title-menu-view");
     const levelsView = document.getElementById("levels-subview");
@@ -180,6 +187,7 @@ function resetAllProgress() {
 
     refreshHomeScreen();
     renderAchievements();
+    syncCodePuzzleOverlay();
     updateInstructionBanner();
     playBeep(280, "sawtooth", 0.14);
 }
@@ -205,11 +213,284 @@ function startLevel1(forceReset = false) {
         );
     }
 
+    syncCodePuzzleOverlay();
     updateInstructionBanner();
     const input = document.getElementById("terminal-input");
     if (input) input.focus();
 }
 
+// ==================== FILL-IN-THE-BLANK CODE PUZZLE ====================
+function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function syncCodePuzzleOverlay() {
+    const state = window.GameState;
+    const overlay = document.getElementById("code-puzzle-overlay");
+    const linesContainer = document.getElementById("code-puzzle-lines");
+    const feedbackEl = document.getElementById("code-puzzle-feedback");
+    const verifyBtn = document.getElementById("code-verify-btn");
+
+    if (!overlay || !linesContainer) return;
+
+    if (state.currentView !== "EVIDENCE_PORTAL" || !state.evidenceFiles[state.activeBranch]) {
+        overlay.classList.add("hidden");
+        return;
+    }
+
+    const ev = state.evidenceFiles[state.activeBranch];
+    overlay.classList.remove("hidden");
+
+    linesContainer.innerHTML = ev.codeLines.map((rawLine, idx) => {
+        const lineNum = `<span class="text-gray-500 select-none mr-2.5">${idx + 1}</span>`;
+        const isComment = rawLine.trim().startsWith("//");
+
+        if (rawLine.includes("{{BLANK}}")) {
+            const parts = rawLine.split("{{BLANK}}");
+            const safeBefore = escapeHtml(parts[0]).replace(/ /g, "&nbsp;");
+            const safeAfter = escapeHtml(parts[1]).replace(/ /g, "&nbsp;");
+
+            if (ev.puzzleSolved) {
+                return `<div class="leading-relaxed whitespace-nowrap">${lineNum}<span>${safeBefore}</span><span class="px-1.5 py-0.5 bg-emerald-900/60 border border-emerald-400 text-emerald-300 font-bold">${escapeHtml(ev.blankAnswer)}</span><span>${safeAfter}</span></div>`;
+            }
+
+            return `<div class="leading-relaxed whitespace-nowrap">${lineNum}<span>${safeBefore}</span><input id="code-blank-input" type="text" autocomplete="off" placeholder="${ev.blankPlaceholder || "???"}" class="mx-0.5 px-1.5 py-0.5 w-28 bg-[#121929] border-2 border-[#facc15] focus:border-[#38bdf8] text-[#fde047] font-code text-xs sm:text-sm outline-none" /><span>${safeAfter}</span></div>`;
+        }
+
+        const formatted = escapeHtml(rawLine).replace(/ /g, "&nbsp;");
+        return `<div class="leading-relaxed whitespace-nowrap ${isComment ? "text-[#6a9955]" : "text-[#58a6ff]"}">${lineNum}${formatted}</div>`;
+    }).join("");
+
+    if (ev.puzzleSolved) {
+        feedbackEl.textContent = "✓ Verified! Run 'git commit'";
+        feedbackEl.className = "font-terminal text-sm sm:text-base text-emerald-400 truncate";
+        verifyBtn.textContent = "SOLVED ✓";
+        verifyBtn.disabled = true;
+        verifyBtn.className = "px-2.5 py-0.5 bg-emerald-900/60 text-emerald-300 font-pixel text-[9px] sm:text-[10px] border border-emerald-500/50 shrink-0";
+    } else {
+        feedbackEl.textContent = "Fill in the blank using the clue on the left";
+        feedbackEl.className = "font-terminal text-sm sm:text-base text-gray-400 truncate";
+        verifyBtn.textContent = "VERIFY";
+        verifyBtn.disabled = false;
+        verifyBtn.className = "px-2.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white font-pixel text-[9px] sm:text-[10px] border border-emerald-300 shrink-0 cursor-pointer";
+
+        const blankInput = document.getElementById("code-blank-input");
+        if (blankInput) {
+            blankInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    verifyCodePuzzle();
+                }
+            });
+        }
+    }
+}
+
+function verifyCodePuzzle() {
+    const state = window.GameState;
+    const ev = state.evidenceFiles[state.activeBranch];
+    const blankInput = document.getElementById("code-blank-input");
+    const feedbackEl = document.getElementById("code-puzzle-feedback");
+
+    if (!ev || ev.puzzleSolved || !blankInput) return;
+
+    const cleaned = blankInput.value.trim().replace(/^["'#]+|["']+$/g, "").toUpperCase();
+    const expected = ev.blankAnswer.trim().replace(/^["'#]+|["']+$/g, "").toUpperCase();
+
+    if (cleaned === expected) {
+        ev.puzzleSolved = true;
+        saveProgress();
+        syncCodePuzzleOverlay();
+        updateInstructionBanner();
+        playBeep(660, "triangle", 0.14);
+        window.writeOutput(`[analyzer] Code verified on '${state.activeBranch}'. Ready to run 'git commit'.`, "text-emerald-400");
+
+        const termInput = document.getElementById("terminal-input");
+        if (termInput) termInput.focus();
+    } else {
+        feedbackEl.textContent = "✕ Mismatch — check the evidence log on the left!";
+        feedbackEl.className = "font-terminal text-sm sm:text-base text-rose-400 truncate";
+        blankInput.classList.remove("border-[#facc15]");
+        blankInput.classList.add("border-rose-500");
+        playBeep(220, "sawtooth", 0.14);
+        blankInput.focus();
+    }
+}
+
+// ==================== COMMIT MESSAGE MODAL ====================
+function openCommitModal() {
+    const state = window.GameState;
+    const modal = document.getElementById("commit-modal-overlay");
+    const branchLabel = document.getElementById("commit-branch-label");
+    const msgInput = document.getElementById("commit-msg-input");
+    const errEl = document.getElementById("commit-modal-error");
+
+    if (!modal || !msgInput) return;
+
+    branchLabel.textContent = `branch: ${state.activeBranch}`;
+    msgInput.value = "";
+    errEl.classList.add("hidden");
+
+    const appShell = document.getElementById("app-shell");
+    if (appShell) appShell.classList.add("opacity-30", "brightness-50", "pointer-events-none");
+
+    modal.classList.remove("hidden");
+    isCommitModalOpen = true;
+    playBeep(540, "triangle", 0.08);
+    setTimeout(() => msgInput.focus(), 20);
+}
+
+function closeCommitModal() {
+    const appShell = document.getElementById("app-shell");
+    if (appShell) appShell.classList.remove("opacity-30", "brightness-50", "pointer-events-none");
+
+    document.getElementById("commit-modal-overlay").classList.add("hidden");
+    isCommitModalOpen = false;
+
+    const input = document.getElementById("terminal-input");
+    if (input && isGameActive && !isAnyModalOpen()) input.focus();
+}
+
+function finalizeCommit(message) {
+    const state = window.GameState;
+    const ev = state.evidenceFiles[state.activeBranch];
+    if (!ev) return;
+
+    ev.taskCompleted = true;
+    ev.commitMessage = message;
+    if (state.currentStep === 4 && state.activeBranch === "atTheScene") {
+        state.currentStep = 5;
+    }
+
+    updateInstructionBanner();
+    saveProgress();
+
+    window.writeOutput(`[${state.activeBranch} 7c3e91a] ${message}`, "text-[#2ea44f]");
+    showHelperCard("commit");
+}
+
+function submitCommitMessage() {
+    const msgInput = document.getElementById("commit-msg-input");
+    const errEl = document.getElementById("commit-modal-error");
+    if (!msgInput) return;
+
+    const msg = msgInput.value.trim();
+    if (msg.length < 3) {
+        errEl.classList.remove("hidden");
+        playBeep(220, "sawtooth", 0.12);
+        msgInput.focus();
+        return;
+    }
+
+    closeCommitModal();
+    finalizeCommit(msg);
+}
+
+// ==================== DETECTIVE HINT MODAL ====================
+function getContextualHint() {
+    const state = window.GameState;
+    const allKeys = Object.keys(state.evidenceFiles);
+    const mergedCount = allKeys.filter(k => state.branches[k] && state.branches[k].merged).length;
+
+    if (mergedCount === allKeys.length) {
+        return {
+            stage: "CASE SOLVED",
+            body: "All 4 leads have been investigated, committed, and merged into main!",
+            cmd: "Click MENU to inspect your badges or replay the case."
+        };
+    }
+
+    if (state.currentView === "DESK") {
+        return {
+            stage: "STEP 1: INSPECT THE BOARD",
+            body: "Check your repository status to walk over to the detective corkboard.",
+            cmd: "git status"
+        };
+    }
+
+    if (state.currentView === "EVIDENCE_PORTAL") {
+        const branch = state.activeBranch;
+        const ev = state.evidenceFiles[branch];
+
+        if (!ev.puzzleSolved) {
+            return {
+                stage: `CODE PUZZLE (${branch})`,
+                body: ev.blankHint,
+                cmd: `Type "${ev.blankAnswer}" into the yellow code box and click VERIFY.`
+            };
+        }
+        if (!ev.taskCompleted) {
+            return {
+                stage: `COMMIT FINDINGS (${branch})`,
+                body: "Your forensic code fix is verified! Now seal your findings onto this branch.",
+                cmd: "git commit"
+            };
+        }
+        return {
+            stage: "RETURN TO MAIN BOARD",
+            body: "Your findings are committed on this branch. Switch back to main so you can merge them.",
+            cmd: "git checkout main"
+        };
+    }
+
+    const readyToMerge = allKeys.find(k => state.branches[k] && state.evidenceFiles[k].taskCompleted && !state.branches[k].merged);
+    if (readyToMerge) {
+        return {
+            stage: `MERGE LEAD (${readyToMerge})`,
+            body: `You committed findings on '${readyToMerge}'. Connect its red thread to the main suspect board.`,
+            cmd: `git merge ${readyToMerge}`
+        };
+    }
+
+    const nextLead = allKeys.find(k => !state.branches[k] || !state.branches[k].merged);
+    if (nextLead) {
+        if (!state.branches[nextLead]) {
+            return {
+                stage: `ISOLATE LEAD (${nextLead})`,
+                body: `Create a dedicated investigation branch for '${nextLead}' before checking it out.`,
+                cmd: `git branch ${nextLead}`
+            };
+        }
+        return {
+            stage: `INVESTIGATE LEAD (${nextLead})`,
+            body: `Branch '${nextLead}' is pinned on the board. Switch into that branch to examine its evidence.`,
+            cmd: `git checkout ${nextLead}`
+        };
+    }
+
+    return {
+        stage: "INVESTIGATION",
+        body: "Use git status to inspect your current case state.",
+        cmd: "git status"
+    };
+}
+
+function openHintModal() {
+    const hint = getContextualHint();
+    document.getElementById("hint-stage-label").textContent = hint.stage;
+    document.getElementById("hint-body-text").textContent = hint.body;
+    document.getElementById("hint-cmd-box").textContent = `> ${hint.cmd}`;
+
+    const appShell = document.getElementById("app-shell");
+    if (appShell) appShell.classList.add("opacity-30", "brightness-50", "pointer-events-none");
+
+    document.getElementById("hint-modal-overlay").classList.remove("hidden");
+    isHintOpen = true;
+    playBeep(580, "triangle", 0.08);
+}
+
+function closeHintModal() {
+    const appShell = document.getElementById("app-shell");
+    if (appShell) appShell.classList.remove("opacity-30", "brightness-50", "pointer-events-none");
+
+    document.getElementById("hint-modal-overlay").classList.add("hidden");
+    isHintOpen = false;
+
+    const input = document.getElementById("terminal-input");
+    if (input && isGameActive && !isAnyModalOpen()) input.focus();
+}
+
+// ==================== FIELD MANUAL MODAL ====================
 function showHelperCard(cmdKey) {
     if (seenCommands.has(cmdKey) || !COMMAND_HELPERS[cmdKey]) return;
     seenCommands.add(cmdKey);
@@ -240,9 +521,10 @@ function closeHelperCard() {
     isHelperOpen = false;
 
     const input = document.getElementById("terminal-input");
-    if (input && isGameActive) input.focus();
+    if (input && isGameActive && !isAnyModalOpen()) input.focus();
 }
 
+// ==================== TERMINAL & MISSION BANNER ====================
 window.writeOutput = function(text, color = "text-gray-300") {
     const history = document.getElementById("terminal-history");
     if (!history) return;
@@ -258,6 +540,7 @@ window.triggerScreenFade = function(callback) {
     const overlay = document.getElementById("fade-overlay");
     if (!overlay) {
         callback();
+        syncCodePuzzleOverlay();
         updateInstructionBanner();
         saveProgress();
         return;
@@ -266,6 +549,7 @@ window.triggerScreenFade = function(callback) {
     overlay.style.opacity = "1";
     setTimeout(() => {
         callback();
+        syncCodePuzzleOverlay();
         updateInstructionBanner();
         saveProgress();
         setTimeout(() => { overlay.style.opacity = "0"; }, 100);
@@ -278,7 +562,10 @@ function updateInstructionBanner() {
     const textEl = document.getElementById("instruction-text");
     if (!banner || !textEl) return;
 
-    const allSolved = Object.keys(state.evidenceFiles).every(k => state.branches[k] && state.branches[k].merged);
+    const allKeys = Object.keys(state.evidenceFiles);
+    const mergedCount = allKeys.filter(k => state.branches[k] && state.branches[k].merged).length;
+    const allSolved = mergedCount === allKeys.length;
+    const trainingWheelsOff = mergedCount >= 2;
 
     if (allSolved) {
         textEl.textContent = "🏆 CASE #104 SOLVED! All 4 evidence leads verified and merged into main.";
@@ -290,18 +577,45 @@ function updateInstructionBanner() {
     banner.classList.replace("border-[#2ea44f]", "border-[#e1b12c]");
     textEl.classList.replace("text-[#2ea44f]", "text-[#fde047]");
 
-    const steps = {
-        1: "🎯 Step 1: Type 'git status' to inspect the Corkboard.",
-        2: "🎯 Step 2: Pin the crime scene lead by typing 'git branch atTheScene'.",
-        3: "🎯 Step 3: Investigate lead by typing 'git checkout atTheScene'.",
-        4: "🎯 Step 4: Document code findings by typing 'git commit'.",
-        5: "🎯 Step 5: Return to the corkboard by typing 'git checkout main'.",
-        6: "🎯 Step 6: File lead into main case by typing 'git merge atTheScene'."
-    };
-    textEl.textContent = steps[state.currentStep] || "🎯 Step 7: Pin, checkout, commit & merge remaining leads (videologs, witness1, witness2).";
+    if (state.currentView === "DESK") {
+        textEl.textContent = "🎯 Step 1: Type 'git status' to inspect the Corkboard.";
+        return;
+    }
+
+    if (state.currentView === "EVIDENCE_PORTAL") {
+        const ev = state.evidenceFiles[state.activeBranch];
+        if (ev && !ev.puzzleSolved) {
+            textEl.textContent = `🧩 Fill in the missing code value for '${state.activeBranch}' and click VERIFY.`;
+        } else if (ev && !ev.taskCompleted) {
+            textEl.textContent = "💾 Code verified! Type 'git commit' to log your commit message.";
+        } else {
+            textEl.textContent = trainingWheelsOff
+                ? "🎯 Findings committed! Return to the main corkboard to merge."
+                : "🎯 Findings committed! Return to the corkboard by typing 'git checkout main'.";
+        }
+        return;
+    }
+
+    const readyToMerge = allKeys.find(k => state.branches[k] && state.evidenceFiles[k].taskCompleted && !state.branches[k].merged);
+    if (readyToMerge) {
+        textEl.textContent = `🎯 File verified lead into main case by typing 'git merge ${readyToMerge}'.`;
+        return;
+    }
+
+    const nextLead = allKeys.find(k => !state.branches[k] || !state.branches[k].merged);
+    if (nextLead) {
+        if (trainingWheelsOff) {
+            const remaining = allKeys.filter(k => !state.branches[k] || !state.branches[k].merged);
+            textEl.textContent = `🕵️ Training Wheels Off (${mergedCount}/4): Isolate & investigate '${remaining.join(", ")}' on your own!`;
+        } else if (!state.branches[nextLead]) {
+            textEl.textContent = `🎯 Lead ${mergedCount + 1}/4: Pin the lead by typing 'git branch ${nextLead}'.`;
+        } else {
+            textEl.textContent = `🎯 Lead ${mergedCount + 1}/4: Investigate lead by typing 'git checkout ${nextLead}'.`;
+        }
+    }
 }
 
-function handleGitCommand(subCmd, args) {
+function handleGitCommand(subCmd, args, rawCmd) {
     const state = window.GameState;
 
     if (subCmd === "status") {
@@ -364,7 +678,7 @@ function handleGitCommand(subCmd, args) {
             return window.writeOutput(`error: pathspec '${target}' did not match any known lead`, "text-red-400");
         }
         if (!state.branches[target]) {
-            state.branches[target] = { pinned: true, merged: false };
+            return window.writeOutput(`error: branch '${target}' does not exist yet. Create it first with 'git branch ${target}'.`, "text-red-400");
         }
 
         state.activeBranch = target;
@@ -384,13 +698,20 @@ function handleGitCommand(subCmd, args) {
         if (state.activeBranch === "main") {
             return window.writeOutput("On branch main — nothing to commit, working tree clean", "text-yellow-400");
         }
-        state.evidenceFiles[state.activeBranch].taskCompleted = true;
-        if (state.currentStep === 4 && state.activeBranch === "atTheScene") state.currentStep = 5;
-        updateInstructionBanner();
-        saveProgress();
 
-        window.writeOutput(`[${state.activeBranch} 7c3e91a] Logged forensic findings for ${state.activeBranch}`, "text-[#2ea44f]");
-        showHelperCard("commit");
+        const ev = state.evidenceFiles[state.activeBranch];
+        if (ev && !ev.puzzleSolved) {
+            playBeep(220, "sawtooth", 0.14);
+            return window.writeOutput("error: forensic script has an unsolved blank. Solve and verify the code puzzle first!", "text-red-400");
+        }
+
+        const mMatch = rawCmd.match(/git\s+commit\s+-m\s+["'](.+?)["']/);
+        if (mMatch && mMatch[1].trim().length >= 3) {
+            finalizeCommit(mMatch[1].trim());
+            return;
+        }
+
+        openCommitModal();
         return;
     }
 
@@ -425,7 +746,7 @@ function handleGitCommand(subCmd, args) {
 }
 
 function submitTerminalInput() {
-    if (isHelperOpen || !isGameActive) return;
+    if (isAnyModalOpen() || !isGameActive) return;
 
     const input = document.getElementById("terminal-input");
     const rawCmd = input.value.trim();
@@ -446,7 +767,7 @@ function submitTerminalInput() {
         if (!subCmd) {
             window.writeOutput("usage: git [status | branch | checkout | commit | merge]");
         } else {
-            handleGitCommand(subCmd, parts.slice(2));
+            handleGitCommand(subCmd, parts.slice(2), rawCmd);
         }
     } else {
         window.writeOutput(`bash: ${mainCmd}: command not found`, "text-gray-400");
@@ -465,12 +786,21 @@ function mainLoop() {
 document.addEventListener("DOMContentLoaded", () => {
     loadProgress();
     refreshHomeScreen();
+    syncCodePuzzleOverlay();
     updateInstructionBanner();
 
     const input = document.getElementById("terminal-input");
+    const commitMsgInput = document.getElementById("commit-msg-input");
+
     document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
-            if (isHelperOpen) {
+            if (isCommitModalOpen) {
+                e.preventDefault();
+                closeCommitModal();
+            } else if (isHintOpen) {
+                e.preventDefault();
+                closeHintModal();
+            } else if (isHelperOpen) {
                 e.preventDefault();
                 closeHelperCard();
             } else if (!isGameActive) {
@@ -482,6 +812,15 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
     });
+
+    if (commitMsgInput) {
+        commitMsgInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                submitCommitMessage();
+            }
+        });
+    }
 
     input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {

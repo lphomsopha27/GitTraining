@@ -4,7 +4,7 @@ const homeBgCanvas = document.getElementById("homeBgCanvas");
 const homeBgCtx = homeBgCanvas ? homeBgCanvas.getContext("2d") : null;
 let animTick = 0;
 
-// ==================== KRILLION-INSPIRED PIXEL CITY & HARBOR TELEMETRY ====================
+// ==================== PIXEL CITY & HARBOR TELEMETRY ====================
 function renderHomeBgFrame() {
     if (!homeBgCtx) return;
     animTick++;
@@ -12,7 +12,6 @@ function renderHomeBgFrame() {
     const h = 540;
     const horizonY = 385;
 
-    // 1. Rich Atmospheric Twilight Sky
     const skyGrad = homeBgCtx.createLinearGradient(0, 0, 0, horizonY);
     skyGrad.addColorStop(0, "#0b132b");
     skyGrad.addColorStop(0.55, "#1c2541");
@@ -20,7 +19,6 @@ function renderHomeBgFrame() {
     homeBgCtx.fillStyle = skyGrad;
     homeBgCtx.fillRect(0, 0, w, horizonY);
 
-    // Subtle Pixel Clouds
     const clouds = [
         { x: 110, y: 92, cw: 120, ch: 18 },
         { x: 350, y: 72, cw: 140, ch: 20 },
@@ -34,7 +32,6 @@ function renderHomeBgFrame() {
         homeBgCtx.fillRect(c.x + 16 + drift, c.y - 8, c.cw - 32, 8);
     });
 
-    // Twinkling Stars
     for (let i = 0; i < 36; i++) {
         const sx = (i * 173 + 29) % w;
         const sy = (i * 89 + 17) % 180;
@@ -43,7 +40,6 @@ function renderHomeBgFrame() {
         homeBgCtx.fillRect(sx, sy, 2, 2);
     }
 
-    // Faint Background Watermark
     homeBgCtx.save();
     homeBgCtx.font = "bold 48px 'Press Start 2P', monospace";
     homeBgCtx.textAlign = "center";
@@ -51,7 +47,6 @@ function renderHomeBgFrame() {
     homeBgCtx.fillText("CASE #104", w / 2, 168);
     homeBgCtx.restore();
 
-    // Sweeping Searchlight Beam
     const beamAngle = Math.sin(animTick * 0.015) * 0.22;
     homeBgCtx.save();
     homeBgCtx.translate(150, horizonY);
@@ -69,7 +64,6 @@ function renderHomeBgFrame() {
     homeBgCtx.fill();
     homeBgCtx.restore();
 
-    // 2. Distant City Skyline Layer (Framed to Edges so Center Stays Clean)
     const farTowers = [
         { x: 16, y: 215, bw: 76, bh: horizonY - 215 },
         { x: 102, y: 185, bw: 84, bh: horizonY - 185 },
@@ -81,7 +75,6 @@ function renderHomeBgFrame() {
     homeBgCtx.fillStyle = "#11192e";
     farTowers.forEach(b => homeBgCtx.fillRect(b.x, b.y, b.bw, b.bh));
 
-    // 3. Foreground Skyscrapers Framed Along Left & Right Flanks
     const nearTowers = [
         { x: 0, y: 255, bw: 96, bh: horizonY - 255, winColor: "#facc15", sign: "GIT", signColor: "#fb7185" },
         { x: 106, y: 220, bw: 88, bh: horizonY - 220, winColor: "#38bdf8", sign: null },
@@ -98,7 +91,6 @@ function renderHomeBgFrame() {
         homeBgCtx.lineWidth = 2;
         homeBgCtx.strokeRect(b.x, b.y, b.bw, b.bh);
 
-        // Rooftop Spire + Blinking Beacon
         homeBgCtx.fillStyle = "#334155";
         homeBgCtx.fillRect(b.x + Math.floor(b.bw / 2), b.y - 20, 3, 20);
         if (Math.floor(animTick / 28 + idx) % 2 === 0) {
@@ -106,7 +98,6 @@ function renderHomeBgFrame() {
             homeBgCtx.fillRect(b.x + Math.floor(b.bw / 2) - 1, b.y - 24, 5, 5);
         }
 
-        // Glowing Pixel Neon Sign on Outer Towers Only
         if (b.sign) {
             homeBgCtx.fillStyle = "#0f172a";
             homeBgCtx.fillRect(b.x + 12, b.y + 10, b.bw - 24, 16);
@@ -119,7 +110,6 @@ function renderHomeBgFrame() {
             homeBgCtx.fillText(b.sign, b.x + b.bw / 2, b.y + 22);
         }
 
-        // Lit Pixel Windows
         const startY = b.sign ? b.y + 34 : b.y + 14;
         for (let wy = startY; wy < horizonY - 14; wy += 18) {
             for (let wx = b.x + 14; wx < b.x + b.bw - 16; wx += 18) {
@@ -130,7 +120,6 @@ function renderHomeBgFrame() {
         }
     });
 
-    // 4. Krillion-Style Deep Harbor / Telemetry Grid Below Horizon
     const seaGrad = homeBgCtx.createLinearGradient(0, horizonY, 0, h);
     seaGrad.addColorStop(0, "#091526");
     seaGrad.addColorStop(1, "#040812");
@@ -153,7 +142,6 @@ function renderHomeBgFrame() {
         homeBgCtx.stroke();
     });
 
-    // Glowing Vertical Clue Tethers & Nodes
     const nodes = [
         { x: 165, depth: 475, color: "#fb7185", glow: "rgba(251, 113, 133, 0.4)" },
         { x: 295, depth: 445, color: "#38bdf8", glow: "rgba(56, 189, 248, 0.4)" },
@@ -183,7 +171,6 @@ function renderHomeBgFrame() {
         homeBgCtx.fillRect(n.x - 3, ny - 3, 6, 6);
     });
 
-    // Right-Side Pixel Depth Scale
     homeBgCtx.strokeStyle = "rgba(148, 163, 184, 0.25)";
     homeBgCtx.lineWidth = 1;
     homeBgCtx.beginPath();
@@ -704,28 +691,29 @@ function drawEvidencePortalView() {
         ctx.stroke();
     }
 
+    // Left Panel: Evidence Logs / Quotes (Slimmed to 340px so Code Analyzer has plenty of width)
     ctx.fillStyle = "#131926";
-    ctx.fillRect(30, 32, 440, 476);
+    ctx.fillRect(24, 32, 340, 476);
     ctx.strokeStyle = "#2a344a";
     ctx.lineWidth = 2;
-    ctx.strokeRect(30, 32, 440, 476);
+    ctx.strokeRect(24, 32, 340, 476);
 
     if (ev) {
-        drawEvidenceArt(evKey, 48, 48, 86, 52, animTick);
+        drawEvidenceArt(evKey, 38, 48, 72, 48, animTick);
         ctx.strokeStyle = "#e1b12c";
         ctx.lineWidth = 1.5;
-        ctx.strokeRect(48, 48, 86, 52);
+        ctx.strokeRect(38, 48, 72, 48);
     }
 
     ctx.fillStyle = "#e1b12c";
-    ctx.font = "bold 17px 'VT323', monospace";
+    ctx.font = "bold 16px 'VT323', monospace";
     ctx.textAlign = "left";
-    drawWrappedText(ev ? ev.title : evKey, 146, 68, 306, 20);
+    drawWrappedText(ev ? ev.title : evKey, 120, 66, 230, 19);
 
     ctx.strokeStyle = "#262e3e";
     ctx.beginPath();
-    ctx.moveTo(48, 114);
-    ctx.lineTo(450, 114);
+    ctx.moveTo(38, 114);
+    ctx.lineTo(350, 114);
     ctx.stroke();
 
     if (ev && ev.logs) {
@@ -733,89 +721,81 @@ function drawEvidencePortalView() {
         ev.logs.forEach((item) => {
             if (item.name) {
                 ctx.fillStyle = "#0d121c";
-                ctx.fillRect(48, py - 18, 402, 52);
+                ctx.fillRect(38, py - 18, 312, 52);
                 ctx.strokeStyle = item.suspect ? "rgba(235, 59, 90, 0.5)" : "#1f2738";
                 ctx.lineWidth = 1;
-                ctx.strokeRect(48, py - 18, 402, 52);
+                ctx.strokeRect(38, py - 18, 312, 52);
 
                 ctx.fillStyle = "#f5f6fa";
-                ctx.font = "14px 'Fira Code', monospace";
-                ctx.fillText(`[${item.time}] ${item.name}`, 60, py + 2);
+                ctx.font = "13px 'Fira Code', monospace";
+                ctx.fillText(`[${item.time}] ${item.name}`, 48, py + 2);
 
                 ctx.fillStyle = item.suspect ? "#eb3b5a" : "#2ea44f";
-                ctx.font = "bold 13px 'Fira Code', monospace";
-                ctx.fillText(`STATUS: ${item.status}`, 60, py + 22);
+                ctx.font = "bold 12px 'Fira Code', monospace";
+                ctx.fillText(`STATUS: ${item.status}`, 48, py + 22);
                 py += 64;
             } else if (item.quote) {
                 ctx.fillStyle = "#0d121c";
-                ctx.fillRect(48, py - 20, 402, 100);
+                ctx.fillRect(38, py - 20, 312, 126);
                 ctx.strokeStyle = "#26334d";
-                ctx.strokeRect(48, py - 20, 402, 100);
+                ctx.strokeRect(38, py - 20, 312, 126);
 
                 ctx.fillStyle = "#74b9ff";
-                ctx.font = "14px 'Fira Code', monospace";
-                py = drawWrappedText(item.quote, 62, py + 6, 374, 24) + 28;
+                ctx.font = "13px 'Fira Code', monospace";
+                py = drawWrappedText(item.quote, 50, py + 4, 288, 22) + 28;
             }
         });
     }
 
+    // Right Panel: Forensic Code Analyzer (Expanded to 556px wide: x=380..936)
     ctx.fillStyle = "#131926";
-    ctx.fillRect(490, 32, 440, 476);
+    ctx.fillRect(380, 32, 556, 476);
     ctx.strokeStyle = "#2a344a";
     ctx.lineWidth = 2;
-    ctx.strokeRect(490, 32, 440, 476);
+    ctx.strokeRect(380, 32, 556, 476);
 
     ctx.fillStyle = "#2ea44f";
     ctx.font = "bold 18px 'VT323', monospace";
-    ctx.fillText("💻 FORENSIC CODE ANALYZER", 510, 66);
+    ctx.fillText("💻 FORENSIC CODE ANALYZER", 396, 66);
 
     ctx.strokeStyle = "#262e3e";
     ctx.beginPath();
-    ctx.moveTo(510, 80);
-    ctx.lineTo(910, 80);
+    ctx.moveTo(396, 80);
+    ctx.lineTo(920, 80);
     ctx.stroke();
 
     ctx.fillStyle = "#dcdde1";
     ctx.font = "16px 'VT323', monospace";
     if (ev && ev.taskPrompt) {
-        drawWrappedText(ev.taskPrompt, 510, 106, 400, 20);
+        drawWrappedText(ev.taskPrompt, 396, 106, 524, 20);
     }
 
-    ctx.fillStyle = "#080b12";
-    ctx.fillRect(510, 156, 400, 224);
-    ctx.strokeStyle = "#262e3e";
-    ctx.strokeRect(510, 156, 400, 224);
-
-    if (ev && ev.codeSnippet) {
-        const lines = ev.codeSnippet.split('\n');
-        lines.forEach((line, i) => {
-            const yPos = 186 + (i * 26);
-            ctx.fillStyle = "#4b5563";
-            ctx.font = "12px 'Fira Code', monospace";
-            ctx.fillText(`${i + 1}`, 522, yPos);
-
-            ctx.fillStyle = line.trim().startsWith("//") ? "#6a9955" : "#58a6ff";
-            ctx.font = "13px 'Fira Code', monospace";
-            ctx.fillText(line, 546, yPos);
-        });
-    }
-
+    // Bottom Status Box inside Forensic Code Analyzer
     if (ev && ev.taskCompleted) {
         ctx.fillStyle = "rgba(46, 164, 79, 0.14)";
-        ctx.fillRect(510, 406, 400, 42);
+        ctx.fillRect(396, 406, 524, 46);
         ctx.strokeStyle = "#2ea44f";
-        ctx.strokeRect(510, 406, 400, 42);
+        ctx.strokeRect(396, 406, 524, 46);
         ctx.fillStyle = "#2ea44f";
-        ctx.font = "bold 17px 'VT323', monospace";
-        ctx.fillText("✓ FINDINGS COMMITTED TO BRANCH", 524, 432);
+        ctx.font = "bold 16px 'VT323', monospace";
+        const msgPreview = ev.commitMessage ? `: "${ev.commitMessage}"` : "";
+        ctx.fillText(`✓ COMMITTED${msgPreview}`.slice(0, 62), 410, 434);
+    } else if (ev && ev.puzzleSolved) {
+        ctx.fillStyle = "rgba(56, 189, 248, 0.14)";
+        ctx.fillRect(396, 406, 524, 46);
+        ctx.strokeStyle = "#38bdf8";
+        ctx.strokeRect(396, 406, 524, 46);
+        ctx.fillStyle = "#7dd3fc";
+        ctx.font = "bold 16px 'VT323', monospace";
+        ctx.fillText("✓ CODE VERIFIED — RUN 'git commit' BELOW", 410, 434);
     } else {
         ctx.fillStyle = "rgba(225, 177, 44, 0.1)";
-        ctx.fillRect(510, 406, 400, 42);
+        ctx.fillRect(396, 406, 524, 46);
         ctx.strokeStyle = "rgba(225, 177, 44, 0.45)";
-        ctx.strokeRect(510, 406, 400, 42);
+        ctx.strokeRect(396, 406, 524, 46);
         ctx.fillStyle = "#e1b12c";
-        ctx.font = "bold 17px 'VT323', monospace";
-        ctx.fillText("⏳ UNCOMMITTED FORENSIC FINDINGS", 524, 432);
+        ctx.font = "bold 16px 'VT323', monospace";
+        ctx.fillText("🧩 SOLVE THE CODE BLANK TO UNLOCK COMMIT", 410, 434);
     }
 }
 
